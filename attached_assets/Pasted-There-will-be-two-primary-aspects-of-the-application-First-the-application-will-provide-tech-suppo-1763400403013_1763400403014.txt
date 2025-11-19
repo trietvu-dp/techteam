@@ -1,0 +1,39 @@
+There will be two primary aspects of the application. First, the application will provide tech support functions to support device checks and repairs. For a device check, student tech team members will add have a form in which they'll capture:
+
+- Student name
+- Student grade
+- Student's device type
+	-> iPad
+	-> Chromebook
+	-> PC Laptop
+	-> MacBook
+- Device Issue
+- Check or Repair
+- Description of issue
+- Notes (made during check or repair)
+
+The application will assign an ID, generate a timestamp for the entry, and by default, assign status as "Pending". Status labels will include:
+
+- Pending
+- In Progress
+- Complete
+
+A Learning component or tab will also be include along with device checks and repairs. Tabs or functions for this component of the app include:
+
+- Challenges: created to help students address the problems they'll face with device checks and repairs. This tab will include:
+	-> Active Challenges that have already been completed 
+	-> Recommended Challenges that students can attempt to improve their skills and knowledge.
+	-> Points will be awarded for all challenges and work completed.
+- Log work: allows students to provide daily notes to what they have done for that day
+	-> Activity Calendar: shows work logged and challenges for that day as well as a Recent Work Log
+- Rankings tab: shows where each student ranks within the school's tech team. 
+- Resources: learning materials, videos, interactive learning scenarios, and other help documentation for the following topics:
+	-> Hardware,
+	-> Software
+	-> Network
+	-> Security
+	-> Troubleshooting
+	-> Best Practices
+	-> Certifications available to students as well.
+	
+This web and mobile app must be secure and the data should be siloed for each school. The application should be hosted and developed on AWS Cloud Services. The application should work well for computers but especially for all mobile devices, including tablets, phones, and laptops. Provide an extensive project plan and architecture for this project. Include a list of all AWS services required for frontend, backend, database (PostgreSQL), and security (authentication and authorization). Do not begin developing code for the project yet. Only provide the project plan in phases and code architecture and database schema. Assume that we'll be using React with Typescript for the frontend and NodeJS for the backend. 

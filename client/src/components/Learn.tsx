@@ -1,0 +1,493 @@
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import type { Challenge, Resource, User } from '@shared/schema';
+import { 
+  Trophy,
+  Star,
+  Target,
+  Users,
+  BookOpen,
+  Video,
+  ExternalLink,
+  Play,
+  Calendar as CalendarIcon,
+  Award,
+  TrendingUp,
+  Lightbulb,
+  Zap,
+  Rocket,
+  Sparkles,
+  Flame
+} from 'lucide-react';
+
+export function Learn() {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('challenges');
+  const [showLogWork, setShowLogWork] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(new Date());
+
+  // Fetch challenges from the database
+  const { data: challengesData = [], isLoading: challengesLoading, error: challengesError } = useQuery<Challenge[]>({
+    queryKey: ['/api/student/challenges'],
+    enabled: !!user,
+  });
+
+  // Fetch rankings from the database
+  const { data: rankingsData = [], isLoading: rankingsLoading, error: rankingsError } = useQuery<Array<User & { rank: number }>>({
+    queryKey: ['/api/student/rankings'],
+    enabled: !!user,
+  });
+
+  // Fetch resources from the database
+  const { data: resourcesData = [], isLoading: resourcesLoading, error: resourcesError } = useQuery<Resource[]>({
+    queryKey: ['/api/student/resources'],
+    enabled: !!user,
+  });
+
+  // Transform challenges data
+  const challenges = challengesData.map((challenge) => ({
+    id: challenge.id,
+    title: challenge.title,
+    description: challenge.description ?? '',
+    participants: challenge.participants ?? 0,
+    daysLeft: challenge.daysToComplete ?? 0,
+    progress: 0, // TODO: Calculate from challenge completions
+    category: challenge.category,
+    difficulty: challenge.difficulty,
+    reward: `${challenge.points} pts`,
+  }));
+
+  // Icon components for rankings
+  const rankingIcons = [Target, Zap, Rocket, Sparkles, Flame];
+
+  // Transform rankings data
+  const rankings = rankingsData.map((ranking, index: number) => {
+    const IconComponent = rankingIcons[index % rankingIcons.length];
+    return {
+      rank: ranking.rank,
+      name: ranking.isCurrentUser ? `You (${ranking.name})` : ranking.name,
+      points: ranking.points,
+      icon: IconComponent,
+      streak: ranking.streak,
+      isCurrentUser: ranking.isCurrentUser,
+    };
+  });
+
+  // Transform resources data - use all fields from the API
+  const resources = resourcesData;
+
+  const recommendations = resources.slice(0, 3);
+  const quickVideos = resources.filter((r) => r.contentType === 'video').slice(0, 3);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div>
+        <h2>Learn & Grow</h2>
+        <p className="text-slate-600">Build skills and track progress</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="challenges">Challenges</TabsTrigger>
+          <TabsTrigger value="log">Log Work</TabsTrigger>
+          <TabsTrigger value="rankings">Rankings</TabsTrigger>
+          <TabsTrigger value="resources">Resources</TabsTrigger>
+        </TabsList>
+
+        {/* CHALLENGES TAB */}
+        <TabsContent value="challenges" className="space-y-4 mt-4">
+          {/* Active Challenges */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3>Active Challenges</h3>
+              <Badge className="bg-blue-100 text-blue-700">
+                {challengesLoading ? 'Loading...' : `${challenges.length} Available`}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              {challengesLoading ? (
+                <div className="text-center py-8 text-slate-500">
+                  Loading challenges...
+                </div>
+              ) : challengesError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-2">Error loading challenges</p>
+                  <p className="text-sm text-slate-400">
+                    {challengesError instanceof Error ? challengesError.message : 'Failed to load challenges. Please try again.'}
+                  </p>
+                </div>
+              ) : challenges.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-slate-500 mb-2">No active challenges</p>
+                  <p className="text-sm text-slate-400">
+                    Check back later for new learning opportunities
+                  </p>
+                </div>
+              ) : (
+                challenges.map((challenge) => (
+                  <Card key={challenge.id} className="p-4" data-testid={`card-challenge-${challenge.id}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-purple-50 rounded-lg">
+                      <Target className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <h4 className="text-sm">{challenge.title}</h4>
+                          <p className="text-xs text-slate-600">{challenge.description}</p>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {challenge.reward}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-slate-600">
+                        <Users className="w-3 h-3" />
+                        <span>{challenge.participants} joined</span>
+                        <span>•</span>
+                        <span>{challenge.daysLeft} days left</span>
+                      </div>
+                      <div className="mt-2">
+                        <Progress value={challenge.progress} className="h-2" />
+                        <p className="text-xs text-slate-600 mt-1">{challenge.progress}% complete</p>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div>
+            <h3 className="mb-3">Recommended for You</h3>
+            <div className="space-y-2">
+              {recommendations.map((rec, index) => (
+                <Card key={index} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="p-2 bg-blue-50 rounded-lg">
+                        <Lightbulb className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-sm">{rec.title}</h4>
+                          <Badge variant="secondary" className="text-xs">{rec.contentType}</Badge>
+                        </div>
+                        <p className="text-xs text-slate-600">{rec.description ?? 'No description available'}</p>
+                        {rec.duration && <p className="text-xs text-slate-400 mt-1">{rec.duration}</p>}
+                      </div>
+                    </div>
+                    <Button size="sm">Start</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Videos */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Video className="w-4 h-4" />
+              <h3>Quick Learning Videos</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {quickVideos.map((video) => (
+                <Card key={video.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
+                  <div className="aspect-video bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg mb-2 flex items-center justify-center relative">
+                    {video.thumbnailUrl ? (
+                      <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover rounded-lg" />
+                    ) : (
+                      <Video className="w-12 h-12 text-blue-600" />
+                    )}
+                    {video.duration && (
+                      <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                        {video.duration}
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
+                        <Play className="w-5 h-5 text-blue-600 ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                  <h4 className="text-xs mb-1">{video.title}</h4>
+                  <p className="text-xs text-slate-600">{video.views ?? 0} views</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* LOG WORK TAB */}
+        <TabsContent value="log" className="space-y-4 mt-4">
+          <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarIcon className="w-5 h-5 text-green-600" />
+              <h3>Challenge-Based Tracking</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">
+              Self-device reporting/battery test—reporting format
+            </p>
+            <Button onClick={() => setShowLogWork(true)} className="w-full">
+              Log Today's Work
+            </Button>
+          </Card>
+
+          {/* Calendar View */}
+          <Card className="p-4">
+            <h3 className="mb-3">Activity Calendar</h3>
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md"
+            />
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span>Work logged</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Challenge day</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Recent Logs */}
+          <div>
+            <h3 className="mb-3">Recent Work Logs</h3>
+            <div className="space-y-2">
+              <Card className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm">Device Checks</span>
+                  <Badge className="bg-green-100 text-green-700">Today</Badge>
+                </div>
+                <p className="text-xs text-slate-600">Completed 5 device diagnostics</p>
+              </Card>
+              <Card className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm">Repair Work</span>
+                  <Badge className="bg-blue-100 text-blue-700">Yesterday</Badge>
+                </div>
+                <p className="text-xs text-slate-600">Fixed 2 Chromebook screens</p>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* RANKINGS TAB */}
+        <TabsContent value="rankings" className="space-y-4 mt-4">
+          <Card className="p-4 bg-gradient-to-br from-yellow-50 to-orange-100 border-yellow-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-yellow-600" />
+                <div>
+                  <div className="text-yellow-900">Your Rank: #3</div>
+                  <p className="text-sm text-yellow-700">2,420 points</p>
+                </div>
+              </div>
+              <div className="text-right flex items-center gap-1">
+                <div className="text-sm text-yellow-700">8 day streak</div>
+                <Flame className="w-4 h-4 text-orange-500" />
+              </div>
+            </div>
+          </Card>
+
+          <div>
+            <h3 className="mb-3">Leaderboard</h3>
+            <div className="space-y-2">
+              {rankingsLoading ? (
+                <div className="text-center py-8 text-slate-500">
+                  Loading rankings...
+                </div>
+              ) : rankingsError ? (
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-2">Error loading rankings</p>
+                  <p className="text-sm text-slate-400">
+                    {rankingsError instanceof Error ? rankingsError.message : 'Failed to load rankings. Please try again.'}
+                  </p>
+                </div>
+              ) : rankings.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-slate-500 mb-2">No rankings available</p>
+                  <p className="text-sm text-slate-400">
+                    Complete challenges to earn points and rank up
+                  </p>
+                </div>
+              ) : (
+                rankings.map((user) => (
+                  <Card 
+                    key={user.rank} 
+                    className={`p-3 ${user.isCurrentUser ? 'bg-blue-50 border-blue-200' : ''}`}
+                    data-testid={`card-ranking-${user.rank}`}
+                  >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                        user.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                        user.rank === 2 ? 'bg-slate-100 text-slate-700' :
+                        user.rank === 3 ? 'bg-orange-100 text-orange-700' :
+                        'bg-slate-50 text-slate-700'
+                      }`}>
+                        {user.rank <= 3 ? (
+                          <Trophy className="w-4 h-4" />
+                        ) : (
+                          user.rank
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <user.icon className="w-3 h-3 text-slate-600" />
+                          <span className="text-sm">{user.name}</span>
+                          {user.isCurrentUser && (
+                            <Badge className="bg-blue-600 text-white text-xs">You</Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-600">
+                          <span>{user.streak} day streak</span>
+                          <Flame className="w-3 h-3 text-orange-500" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm">{user.points.toLocaleString()}</div>
+                      <p className="text-xs text-slate-600">points</p>
+                    </div>
+                  </div>
+                </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Award className="w-5 h-5 text-purple-600" />
+              <h3>Get Certified</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-3">
+              Complete challenges to earn certifications and upskill
+            </p>
+            <Button className="w-full" variant="outline">
+              View Available Certifications
+            </Button>
+          </Card>
+        </TabsContent>
+
+        {/* RESOURCES TAB */}
+        <TabsContent value="resources" className="space-y-4 mt-4">
+          <Card className="p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="w-5 h-5 text-indigo-600" />
+              <h3>Curated Resources</h3>
+            </div>
+            <p className="text-sm text-slate-600">
+              Searchable resources organized by topic and scenario
+            </p>
+          </Card>
+
+          {/* Search would go here */}
+          <div className="space-y-2">
+            <h3 className="mb-3">Recommended Resources</h3>
+            {resources.map((resource, index) => (
+              <Card key={index} className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="text-sm">{resource.title}</h4>
+                      <Badge variant="secondary" className="text-xs">{resource.category}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-600">{resource.description}</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-400 ml-2" />
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Topics/Scenarios */}
+          <div>
+            <h3 className="mb-3">Browse by Topic</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {['Hardware', 'Software', 'Network', 'Security', 'Troubleshooting', 'Best Practices'].map((topic) => (
+                <Button key={topic} variant="outline" className="justify-start">
+                  {topic}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Try Now / Required Materials Box */}
+          <Card className="p-4 border-2 border-dashed border-blue-300 bg-blue-50">
+            <h3 className="mb-2">Get Started</h3>
+            <p className="text-sm text-slate-600 mb-3">
+              Resources are organized with "Try Now" scenarios and required materials boxes to support hands-on learning
+            </p>
+            <Button className="w-full">Explore Interactive Scenarios</Button>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Log Work Dialog */}
+      <Dialog open={showLogWork} onOpenChange={setShowLogWork}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Log Your Work</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm">What did you work on today?</label>
+              <Textarea 
+                placeholder="e.g., Completed device checks, fixed screen issues..."
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm">Hours worked</label>
+              <input 
+                type="number" 
+                className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg"
+                placeholder="0.5"
+                step="0.5"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm">Category</label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {['Device Checks', 'Repairs', 'Learning', 'Other'].map((cat) => (
+                  <Button key={cat} variant="outline" size="sm">
+                    {cat}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLogWork(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setShowLogWork(false)}>
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
